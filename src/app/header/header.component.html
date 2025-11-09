@@ -1,0 +1,56 @@
+<header class="text-white p-4 shadow-md">
+    <div class="container mx-auto flex items-center justify-between flex-wrap">
+      <a [routerLink]="['/']" class="flex items-center space-x-2 cursor-pointer">
+        <img [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto">
+        <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ title }}</span>
+      </a>
+      <div class="w-12"></div>
+      <form (ngSubmit)="onSearch()" class="flex-grow max-w-full mt-4 sm:mt-0">
+        <div class="relative">
+          <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+            <svg class="w-4 h-4 text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+            </svg>
+          </div>
+          <input
+            type="search"
+            id="default-search"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchQueryChange($event)"
+            [ngModelOptions]="{ standalone: true }"
+            class="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search FindMovies"
+            required
+          />
+        </div>
+      </form>
+    </div>
+    <div *ngIf="errorMessage" class="text-white mt-4 max-w-md mx-auto">
+        {{ errorMessage }}
+    </div>
+    <div class="container mx-auto flex items-center justify-between flex-wrap mt-4">
+        <div class="flex items-center space-x-2"></div>
+        <div class="flex-grow max-w-full  sm:mt-0 ml-190 bg-gray-900">
+            <div *ngIf="isLoading" class="flex items-center justify-center mt-20" >
+              <img [src]="'loader' | imgPng: 'imgs'" alt="loader" >
+            </div>
+            <div *ngIf="!isLoading && searchResults.length > 0">
+                <ul class="divide-y divide-gray-700">
+                  <li 
+                    *ngFor="let result of searchResults" 
+                    class="flex items-center space-x-4 py-4 hover:bg-gray-800  focus:bg-gray-800 focus:outline-none"
+                    tabindex="0" (click)="onResultMovie(result)">
+                    <img *ngIf="result?.Poster !=='N/A'" [src]="result.Poster" alt="{{ result.Title }}" class="w-16 h-24 object-cover"  alt="Movie">
+                    <img *ngIf="result?.Poster =='N/A'" [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto"  alt="Movie">
+                    <div>
+                      <h3 class="text-lg font-semibold">{{ result.Title }}</h3>
+                      <p class="text-sm text-white">{{ result.Year }}</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+        </div>
+    </div>  
+  </header>
+
+

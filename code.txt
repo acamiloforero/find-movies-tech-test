@@ -1,0 +1,1690 @@
+server.ts
+     1	import { APP_BASE_HREF } from '@angular/common';
+     2	import { CommonEngine } from '@angular/ssr';
+     3	import express from 'express';
+     4	import { fileURLToPath } from 'node:url';
+     5	import { dirname, join, resolve } from 'node:path';
+     6	import bootstrap from './src/main.server';
+     7	
+     8	// The Express app is exported so that it can be used by serverless Functions.
+     9	export function app(): express.Express {
+    10	  const server = express();
+    11	  const serverDistFolder = dirname(fileURLToPath(import.meta.url));
+    12	  const browserDistFolder = resolve(serverDistFolder, '../browser');
+    13	  const indexHtml = join(serverDistFolder, 'index.server.html');
+    14	
+    15	  const commonEngine = new CommonEngine();
+    16	
+    17	  server.set('view engine', 'html');
+    18	  server.set('views', browserDistFolder);
+    19	
+    20	  // Example Express Rest API endpoints
+    21	  // server.get('/api/**', (req, res) => { });
+    22	  // Serve static files from /browser
+    23	  server.get('**', express.static(browserDistFolder, {
+    24	    maxAge: '1y',
+    25	    index: 'index.html',
+    26	  }));
+    27	
+    28	  // All regular routes use the Angular engine
+    29	  server.get('**', (req, res, next) => {
+    30	    const { protocol, originalUrl, baseUrl, headers } = req;
+    31	
+    32	    commonEngine
+    33	      .render({
+    34	        bootstrap,
+    35	        documentFilePath: indexHtml,
+    36	        url: `${protocol}://${headers.host}${originalUrl}`,
+    37	        publicPath: browserDistFolder,
+    38	        providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
+    39	      })
+    40	      .then((html) => res.send(html))
+    41	      .catch((err) => next(err));
+    42	  });
+    43	
+    44	  return server;
+    45	}
+    46	
+    47	function run(): void {
+    48	  const port = process.env['PORT'] || 4000;
+    49	
+    50	  // Start up the Node server
+    51	  const server = app();
+    52	  server.listen(port, () => {
+    53	    console.log(`Node Express server listening on http://localhost:${port}`);
+    54	  });
+    55	}
+    56	
+    57	run();
+
+src/app/app.component.html
+     1	
+     2	<main class="main">
+     3	  <div class="content">
+     4	  <app-header></app-header>
+     5	  </div>
+     6	</main>
+     7	
+     8	
+     9	
+    10	<router-outlet />
+
+src/app/app.component.scss
+
+src/app/app.component.spec.ts
+     1	import { TestBed } from '@angular/core/testing';
+     2	import { AppComponent } from './app.component';
+     3	import { RouterOutlet } from '@angular/router';
+     4	import { HeaderComponent } from './header/header.component';
+     5	import { NO_ERRORS_SCHEMA } from '@angular/core';
+     6	import { ActivatedRoute } from '@angular/router';
+     7	import { of } from 'rxjs';
+     8	
+     9	describe('AppComponent', () => {
+    10	  beforeEach(async () => {
+    11	    await TestBed.configureTestingModule({
+    12	      imports: [AppComponent, RouterOutlet, HeaderComponent],
+    13	      providers: [
+    14	        {
+    15	          provide: ActivatedRoute,
+    16	          useValue: {
+    17	            snapshot: {
+    18	              paramMap: {
+    19	                get: () => null
+    20	              }
+    21	            },
+    22	            paramMap: of({
+    23	              get: () => null
+    24	            })
+    25	          }
+    26	        }
+    27	      ],
+    28	      schemas: [NO_ERRORS_SCHEMA]
+    29	    }).compileComponents();
+    30	  });
+    31	
+    32	  it('should create the app', () => {
+    33	    const fixture = TestBed.createComponent(AppComponent);
+    34	    const app = fixture.componentInstance;
+    35	    expect(app).toBeTruthy();
+    36	  });
+    37	
+    38	  it('should have a router outlet', () => {
+    39	    const fixture = TestBed.createComponent(AppComponent);
+    40	    const compiled = fixture.nativeElement as HTMLElement;
+    41	    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+    42	  });
+    43	
+    44	  it('should render the header component', () => {
+    45	    const fixture = TestBed.createComponent(AppComponent);
+    46	    fixture.detectChanges();
+    47	    const compiled = fixture.nativeElement as HTMLElement;
+    48	    expect(compiled.querySelector('app-header')).not.toBeNull();
+    49	  });
+    50	});
+    51	
+
+src/app/app.component.ts
+     1	import { Component } from '@angular/core';
+     2	import { RouterOutlet } from '@angular/router';
+     3	import { register } from 'swiper/element/bundle';
+     4	
+     5	register();
+     6	
+     7	import { HeaderComponent } from './header/header.component';
+     8	@Component({  
+     9	  selector: 'app-root',
+    10	  standalone: true,
+    11	  imports: [
+    12	    RouterOutlet,
+    13	    HeaderComponent,
+    14	  ],
+    15	  templateUrl: './app.component.html',
+    16	  styleUrl: './app.component.scss'
+    17	})
+    18	export class AppComponent {
+    19	 
+    20	}
+
+src/app/app.config.server.ts
+     1	import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
+     2	import { provideServerRendering } from '@angular/platform-server';
+     3	import { appConfig } from './app.config';
+     4	
+     5	const serverConfig: ApplicationConfig = {
+     6	  providers: [
+     7	    provideServerRendering()
+     8	  ]
+     9	};
+    10	
+    11	export const config = mergeApplicationConfig(appConfig, serverConfig);
+
+src/app/app.config.ts
+     1	import { ApplicationConfig, provideZoneChangeDetection, isDevMode, importProvidersFrom } from '@angular/core';
+     2	import { provideRouter } from '@angular/router';
+     3	import { provideHttpClient,withFetch } from '@angular/common/http';
+     4	import { routes } from './app.routes';
+     5	import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
+     6	import { provideServiceWorker } from '@angular/service-worker';
+     7	import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+     8	const NO_NG_MODULES = importProvidersFrom([BrowserAnimationsModule,BrowserModule]);
+     9	
+    10	export const appConfig: ApplicationConfig = {
+    11	  providers: [
+    12	    NO_NG_MODULES,
+    13	    provideZoneChangeDetection({ eventCoalescing: true }), 
+    14	    provideRouter(routes), provideClientHydration(),
+    15	    provideHttpClient(withFetch()), 
+    16	    provideServiceWorker('ngsw-worker.js', {
+    17	            enabled: !isDevMode(),
+    18	            registrationStrategy: 'registerWhenStable:30000'
+    19	          }),
+    20	  ]
+    21	};
+
+src/app/app.routes.ts
+     1	import { NgModule } from '@angular/core';
+     2	import { Routes, RouterModule } from '@angular/router';
+     3	
+     4	//pages
+     5	import { HomeComponent } from './pages/home/home.component';
+     6	import { DetailsMovieComponent } from './pages/details-movie/details-movie.component';
+     7	import { PageNotFoundComponent } from './pages/page-not-found/page-not-found.component';
+     8	
+     9	export const routes: Routes = [
+    10	    {
+    11	        path: '',
+    12	        redirectTo: 'home',
+    13	        pathMatch: "full",
+    14	    },
+    15	    {
+    16	        path: 'home',
+    17	        component: HomeComponent,
+    18	    },
+    19	    { 
+    20	        path: 'page-not-found', 
+    21	        component: PageNotFoundComponent 
+    22	    },
+    23	    { 
+    24	      path: 'movie/:id', 
+    25	      component: DetailsMovieComponent
+    26	    },
+    27	];
+    28	@NgModule({
+    29	    imports: [RouterModule.forRoot(routes)],
+    30	    exports: [RouterModule]
+    31	  })
+    32	  export class AppRoutingModule { }
+
+src/app/core/interface/movie.ts
+     1	export interface Movie {
+     2	    Title: string;
+     3	    Year: string;
+     4	    Poster: string;
+     5	    imdbID:string
+     6	}
+
+src/app/core/pipes/img-icons.pipe.spec.ts
+     1	import { ImgIconsPipe } from './img-icons.pipe';
+     2	
+     3	describe('ImgIconsPipe', () => {
+     4	  it('create an instance', () => {
+     5	    const pipe = new ImgIconsPipe();
+     6	    expect(pipe).toBeTruthy();
+     7	  });
+     8	});
+
+src/app/core/pipes/img-icons.pipe.ts
+     1	import { Pipe, PipeTransform } from '@angular/core';
+     2	
+     3	@Pipe({
+     4	  name: 'imgIcons',
+     5	  standalone: true
+     6	})
+     7	export class ImgIconsPipe implements PipeTransform {
+     8	
+     9	  transform(icon: string, folder?: string): string {
+    10	    const URL = ""
+    11	    return `${URL}/${folder}/${icon}.svg`;
+    12	  }
+    13	
+    14	}
+
+src/app/core/pipes/img-png.pipe.spec.ts
+     1	import { ImgPngPipe } from './img-png.pipe';
+     2	
+     3	describe('ImgPngPipe', () => {
+     4	  it('create an instance', () => {
+     5	    const pipe = new ImgPngPipe();
+     6	    expect(pipe).toBeTruthy();
+     7	  });
+     8	});
+
+src/app/core/pipes/img-png.pipe.ts
+     1	import { Pipe, PipeTransform } from '@angular/core';
+     2	
+     3	@Pipe({
+     4	  name: 'imgPng',
+     5	  standalone: true
+     6	})
+     7	export class ImgPngPipe implements PipeTransform {
+     8	
+     9	  transform(img: string, folder?: string): string {
+    10	    const URL = ""
+    11	    return `${URL}/${folder}/${img}.png`;
+    12	  }
+    13	
+    14	}
+
+src/app/core/pipes/pipes.module.ts
+     1	import { NgModule } from '@angular/core';
+     2	import { CommonModule } from '@angular/common';
+     3	import { ImgPngPipe } from './img-png.pipe';
+     4	import { ImgIconsPipe } from './img-icons.pipe'
+     5	
+     6	@NgModule({
+     7	  declarations: [],
+     8	  exports: [ImgPngPipe, ImgIconsPipe],
+     9	  imports: [
+    10	    CommonModule,
+    11	    ImgPngPipe, 
+    12	    ImgIconsPipe
+    13	  ]
+    14	})
+    15	export class PipesModule { }
+
+src/app/core/services/the-movies.service.spec.ts
+     1	import { TestBed } from '@angular/core/testing';
+     2	import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+     3	import { TheMoviesService } from './the-movies.service';
+     4	import { HttpErrorResponse } from '@angular/common/http';
+     5	
+     6	describe('TheMoviesService', () => {
+     7	  let service: TheMoviesService;
+     8	  let httpMock: HttpTestingController;
+     9	
+    10	  beforeEach(() => {
+    11	    TestBed.configureTestingModule({
+    12	      imports: [HttpClientTestingModule],
+    13	      providers: [TheMoviesService]
+    14	    });
+    15	    service = TestBed.inject(TheMoviesService);
+    16	    httpMock = TestBed.inject(HttpTestingController);
+    17	  });
+    18	
+    19	  afterEach(() => {
+    20	    httpMock.verify();
+    21	  });
+    22	
+    23	  it('should be created', () => {
+    24	    expect(service).toBeTruthy();
+    25	  });
+    26	
+    27	  describe('#searchMovies', () => {
+    28	    it('should return an error if query is less than 3 characters', () => {
+    29	      service.searchMovies('ab').subscribe({
+    30	        next: () => fail('should have failed with a query length error'),
+    31	        error: error => {
+    32	          expect(error.message).toContain('Only queries with at least 3 characters.');
+    33	        }
+    34	      });
+    35	    });
+    36	
+    37	    it('should return search results for valid query', () => {
+    38	      const dummyMovies = {
+    39	        Search: [
+    40	          { Title: 'Movie 1', imdbID: 'tt1234567' },
+    41	          { Title: 'Movie 2', imdbID: 'tt7654321' }
+    42	        ]
+    43	      };
+    44	
+    45	      service.searchMovies('abc').subscribe(movies => {
+    46	        expect(movies.Search.length).toBe(2);
+    47	        expect(movies.Search).toEqual(dummyMovies.Search);
+    48	      });
+    49	
+    50	      const req = httpMock.expectOne(`${service['baseUrl']}?apikey=${service['apiKey']}&s=abc`);
+    51	      expect(req.request.method).toBe('GET');
+    52	      req.flush(dummyMovies);
+    53	    });
+    54	
+    55	    it('should handle errors in searchMovies', () => {
+    56	      service.searchMovies('abc').subscribe({
+    57	        next: () => fail('should have failed with an error'),
+    58	        error: (error: HttpErrorResponse) => {
+    59	          expect(error.message).toContain('Could not recover movie search');
+    60	        }
+    61	      });
+    62	
+    63	      const req = httpMock.expectOne(`${service['baseUrl']}?apikey=${service['apiKey']}&s=abc`);
+    64	      req.flush('Error', { status: 500, statusText: 'Server Error' });
+    65	    });
+    66	  });
+    67	
+    68	  describe('#getMovieDetails', () => {
+    69	    it('should return movie details', () => {
+    70	      const dummyDetails = { Title: 'Movie 1', imdbID: 'tt1234567', Plot: 'Some plot' };
+    71	
+    72	      service.getMovieDetails('tt1234567').subscribe(details => {
+    73	        expect(details).toEqual(dummyDetails);
+    74	      });
+    75	
+    76	      const req = httpMock.expectOne(`${service['baseUrl']}/?i=tt1234567&apikey=${service['apiKey']}`);
+    77	      expect(req.request.method).toBe('GET');
+    78	      req.flush(dummyDetails);
+    79	    });
+    80	
+    81	    it('should handle errors in getMovieDetails', () => {
+    82	      service.getMovieDetails('tt1234567').subscribe({
+    83	        next: () => fail('should have failed with an error'),
+    84	        error: (error: HttpErrorResponse) => {
+    85	          expect(error.message).toContain('Something went wrong with the request. Please try again later.');
+    86	        }
+    87	      });
+    88	
+    89	      const req = httpMock.expectOne(`${service['baseUrl']}/?i=tt1234567&apikey=${service['apiKey']}`);
+    90	      req.flush('Error', { status: 500, statusText: 'Server Error' });
+    91	    });
+    92	  });
+    93	
+    94	  describe('#getAllMovies', () => {
+    95	    it('should return a list of movie details', () => {
+    96	      const dummyMovies = {
+    97	        Search: [
+    98	          { Title: 'Movie 1', imdbID: 'tt1234567' },
+    99	          { Title: 'Movie 2', imdbID: 'tt7654321' }
+   100	        ]
+   101	      };
+   102	
+   103	      const dummyDetails1 = { Title: 'Movie 1', imdbID: 'tt1234567', Plot: 'Some plot' };
+   104	      const dummyDetails2 = { Title: 'Movie 2', imdbID: 'tt7654321', Plot: 'Some plot' };
+   105	
+   106	      service.getAllMovies(1).subscribe(details => {
+   107	        expect(details.length).toBe(2);
+   108	        expect(details).toEqual([dummyDetails1, dummyDetails2]);
+   109	      });
+   110	
+   111	      const req = httpMock.expectOne(`${service['baseUrl']}?s=movie&type=movie&page=1&apikey=${service['apiKey']}`);
+   112	      expect(req.request.method).toBe('GET');
+   113	      req.flush(dummyMovies);
+   114	
+   115	      const req1 = httpMock.expectOne(`${service['baseUrl']}/?i=tt1234567&apikey=${service['apiKey']}`);
+   116	      const req2 = httpMock.expectOne(`${service['baseUrl']}/?i=tt7654321&apikey=${service['apiKey']}`);
+   117	
+   118	      expect(req1.request.method).toBe('GET');
+   119	      expect(req2.request.method).toBe('GET');
+   120	
+   121	      req1.flush(dummyDetails1);
+   122	      req2.flush(dummyDetails2);
+   123	    });
+   124	
+   125	    it('should handle errors in getAllMovies', () => {
+   126	      service.getAllMovies(1).subscribe({
+   127	        next: () => fail('should have failed with an error'),
+   128	        error: (error: HttpErrorResponse) => {
+   129	          expect(error.message).toContain('Something went wrong with the request. Please try again later.');
+   130	        }
+   131	      });
+   132	
+   133	      const req = httpMock.expectOne(`${service['baseUrl']}?s=movie&type=movie&page=1&apikey=${service['apiKey']}`);
+   134	      req.flush('Error', { status: 500, statusText: 'Server Error' });
+   135	    });
+   136	  });
+   137	
+   138	  // Similar tests can be written for getAllSeries and getPremieres following the pattern above
+   139	
+   140	});
+
+src/app/core/services/the-movies.service.ts
+     1	import { Injectable } from '@angular/core';
+     2	import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+     3	import { catchError, forkJoin, Observable, switchMap, tap, throwError } from 'rxjs';
+     4	
+     5	@Injectable({
+     6	  providedIn: 'root'
+     7	})
+     8	export class TheMoviesService {
+     9	  private apiKey = 'e0a86a5d'; 
+    10	  private baseUrl = 'https://www.omdbapi.com/';
+    11	
+    12	  constructor(private http: HttpClient) {}
+    13	
+    14	  searchMovies(query: string): Observable<any> {
+    15	    if (query.length < 3) {
+    16	      return throwError(() => new Error('Only queries with at least 3 characters.'));
+    17	    }
+    18	    const params = new HttpParams()
+    19	      .set('apikey', this.apiKey)
+    20	      .set('s', query);
+    21	
+    22	    return this.http.get<any>(this.baseUrl, { params }).pipe(
+    23	      catchError(error => {
+    24	        console.error('Error occurred:', error);
+    25	        return throwError(() => new Error('Could not recover movie search'));
+    26	      })
+    27	    );
+    28	  }
+    29	
+    30	  getMovieDetails(id: string): Observable<any> {
+    31	    return this.http.get(`${this.baseUrl}/?i=${id}&apikey=${this.apiKey}`) .pipe(
+    32	      catchError(this.handleError)
+    33	    );
+    34	  }
+    35	
+    36	  getAllMovies(page: number = 1): Observable<any> {
+    37	    return this.http.get(`${this.baseUrl}?s=movie&type=movie&page=${page}&apikey=${this.apiKey}`)
+    38	      .pipe(
+    39	        switchMap((response: any) => {
+    40	          const movieDetailsRequests = response.Search.map((movie: any) =>
+    41	            this.getMovieDetails(movie.imdbID)
+    42	          );
+    43	          return forkJoin(movieDetailsRequests);
+    44	        }),
+    45	        catchError(this.handleError)
+    46	      );
+    47	  }
+    48	  
+    49	  getAllSeries(page: number = 1): Observable<any> {
+    50	    return this.http.get(`${this.baseUrl}?s=series&type=series&page=${page}&apikey=${this.apiKey}`)
+    51	    .pipe(
+    52	      switchMap((response: any) => {
+    53	        const movieDetailsRequests = response.Search.map((movie: any) =>
+    54	          this.getMovieDetails(movie.imdbID)
+    55	        );
+    56	        return forkJoin(movieDetailsRequests);
+    57	      }),
+    58	      catchError(this.handleError)
+    59	    );
+    60	  }
+    61	  
+    62	  getPremieres(page: number = 1): Observable<any> {
+    63	    return this.http.get(`${this.baseUrl}?s=movie&y=2023&page=${page}&apikey=${this.apiKey}`)
+    64	    .pipe(
+    65	      switchMap((response: any) => {
+    66	        const movieDetailsRequests = response.Search.map((movie: any) =>
+    67	          this.getMovieDetails(movie.imdbID)
+    68	        );
+    69	        return forkJoin(movieDetailsRequests);
+    70	      }),
+    71	      catchError(this.handleError)
+    72	    );;
+    73	  }
+    74	
+    75	  private handleError(error: any): Observable<never> {
+    76	    console.error('An error occurred:', error);
+    77	    return throwError(() => new Error('Something went wrong with the request. Please try again later.'));
+    78	  }
+    79	  
+    80	}
+
+src/app/header/header.component.html
+     1	<header class="text-white p-4 shadow-md">
+     2	    <div class="container mx-auto flex items-center justify-between flex-wrap">
+     3	      <a [routerLink]="['/']" class="flex items-center space-x-2 cursor-pointer">
+     4	        <img [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto">
+     5	        <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ title }}</span>
+     6	      </a>
+     7	      <div class="w-12"></div>
+     8	      <form (ngSubmit)="onSearch()" class="flex-grow max-w-full mt-4 sm:mt-0">
+     9	        <div class="relative">
+    10	          <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+    11	            <svg class="w-4 h-4 text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+    12	              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+    13	            </svg>
+    14	          </div>
+    15	          <input
+    16	            type="search"
+    17	            id="default-search"
+    18	            [(ngModel)]="searchQuery"
+    19	            (ngModelChange)="onSearchQueryChange($event)"
+    20	            [ngModelOptions]="{ standalone: true }"
+    21	            class="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
+    22	            placeholder="Search FindMovies"
+    23	            required
+    24	          />
+    25	        </div>
+    26	      </form>
+    27	    </div>
+    28	    <div *ngIf="errorMessage" class="text-white mt-4 max-w-md mx-auto">
+    29	        {{ errorMessage }}
+    30	    </div>
+    31	    <div class="container mx-auto flex items-center justify-between flex-wrap mt-4">
+    32	        <div class="flex items-center space-x-2"></div>
+    33	        <div class="flex-grow max-w-full  sm:mt-0 ml-190 bg-gray-900">
+    34	            <div *ngIf="isLoading" class="flex items-center justify-center mt-20" >
+    35	              <img [src]="'loader' | imgPng: 'imgs'" alt="loader" >
+    36	            </div>
+    37	            <div *ngIf="!isLoading && searchResults.length > 0">
+    38	                <ul class="divide-y divide-gray-700">
+    39	                  <li 
+    40	                    *ngFor="let result of searchResults" 
+    41	                    class="flex items-center space-x-4 py-4 hover:bg-gray-800  focus:bg-gray-800 focus:outline-none"
+    42	                    tabindex="0" (click)="onResultMovie(result)">
+    43	                    <img *ngIf="result?.Poster !=='N/A'" [src]="result.Poster" alt="{{ result.Title }}" class="w-16 h-24 object-cover"  alt="Movie">
+    44	                    <img *ngIf="result?.Poster =='N/A'" [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto"  alt="Movie">
+    45	                    <div>
+    46	                      <h3 class="text-lg font-semibold">{{ result.Title }}</h3>
+    47	                      <p class="text-sm text-white">{{ result.Year }}</p>
+    48	                    </div>
+    49	                  </li>
+    50	                </ul>
+    51	              </div>
+    52	        </div>
+    53	    </div>  
+    54	  </header>
+    55	
+    56	
+
+src/app/header/header.component.scss
+     1	.space-4px {
+     2	    width: 4px;
+     3	  }
+     4	
+     5	  .search-input {
+     6	    width: 100%;
+     7	    padding: 8px;
+     8	    border-radius: 4px;
+     9	    border: 1px solid #ccc;
+    10	  }
+    11	  
+    12	  button[disabled] {
+    13	    background-color: grey;
+    14	    cursor: not-allowed;
+    15	  }
+    16	  .ml-190{
+    17	    margin-left: 190px;
+    18	  }
+src/app/header/header.component.spec.ts
+     1	import { ComponentFixture, TestBed } from '@angular/core/testing';
+     2	import { AppComponent } from '../app.component';
+     3	import { RouterOutlet } from '@angular/router';
+     4	import { HeaderComponent } from './header.component';
+     5	import { RouterTestingModule } from '@angular/router/testing';
+     6	import { NO_ERRORS_SCHEMA } from '@angular/core';
+     7	
+     8	describe('AppComponent', () => {
+     9	  let component: AppComponent;
+    10	  let fixture: ComponentFixture<AppComponent>;
+    11	
+    12	  beforeEach(async () => {
+    13	    await TestBed.configureTestingModule({
+    14	      imports: [
+    15	        RouterTestingModule,  
+    16	        AppComponent,
+    17	        HeaderComponent 
+    18	      ],
+    19	      schemas: [NO_ERRORS_SCHEMA]  
+    20	    }).compileComponents();
+    21	  });
+    22	
+    23	  beforeEach(() => {
+    24	    fixture = TestBed.createComponent(AppComponent);
+    25	    component = fixture.componentInstance;
+    26	    fixture.detectChanges();
+    27	  });
+    28	
+    29	  it('should create the app', () => {
+    30	    expect(component).toBeTruthy();
+    31	  });
+    32	
+    33	  it('should have a router outlet', () => {
+    34	    const compiled = fixture.nativeElement as HTMLElement;
+    35	    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+    36	  });
+    37	
+    38	  it('should render the header component', () => {
+    39	    const compiled = fixture.nativeElement as HTMLElement;
+    40	    expect(compiled.querySelector('app-header')).not.toBeNull();
+    41	  });
+    42	});
+
+src/app/header/header.component.ts
+     1	import { Component } from '@angular/core';
+     2	import { PipesModule } from "../core/pipes/pipes.module";
+     3	import { ReactiveFormsModule } from '@angular/forms';
+     4	import { debounceTime } from 'rxjs/operators';
+     5	import { TheMoviesService } from '../core/services/the-movies.service';
+     6	import { Subject } from 'rxjs';
+     7	import { FormsModule } from '@angular/forms';
+     8	import { HttpClientModule } from '@angular/common/http';
+     9	import { NgIf, NgFor } from '@angular/common';
+    10	import { Movie } from '../core/interface/movie';
+    11	import { Router } from '@angular/router';
+    12	import { RouterModule } from '@angular/router';
+    13	@Component({
+    14	  selector: 'app-header',
+    15	  standalone: true,
+    16	  imports: [
+    17	    PipesModule, 
+    18	    ReactiveFormsModule,
+    19	    FormsModule, 
+    20	    HttpClientModule,
+    21	    NgIf,
+    22	    NgFor,
+    23	    RouterModule
+    24	  ],
+    25	  templateUrl: './header.component.html',
+    26	  styleUrl: './header.component.scss'
+    27	})
+    28	export class HeaderComponent {
+    29	  private searchSubject = new Subject<string>();
+    30	  title:string="FindMovies";
+    31	  searchQuery: string = '';
+    32	  searchResults: any[] = [];
+    33	  errorMessage: string = '';
+    34	  isLoading: boolean = false;
+    35	
+    36	  constructor(private movieService: TheMoviesService, public router: Router) {
+    37	    this.searchSubject.pipe(
+    38	      debounceTime(500) 
+    39	    ).subscribe(query => {
+    40	      this.performSearch(query);
+    41	    });
+    42	  }
+    43	
+    44	  onSearchQueryChange(query: string) {
+    45	    this.isLoading = true;
+    46	    // console.log(query)
+    47	    this.searchQuery = query;
+    48	    if (query.length >= 3) {
+    49	      this.searchSubject.next(query);
+    50	    } else if (query.length > 0 && query.length < 3) {
+    51	      this.searchResults = [];
+    52	    }else{
+    53	      this.isLoading = false;
+    54	      this.searchResults = [];
+    55	    }
+    56	  }
+    57	
+    58	  onSearch() {
+    59	    
+    60	    if (this.searchQuery.length >= 3) {
+    61	      this.performSearch(this.searchQuery);
+    62	    } else {
+    63	      console.warn('You must enter a minimum of 3 characters');
+    64	    }
+    65	  }
+    66	
+    67	  performSearch(query: string) {
+    68	    this.movieService.searchMovies(query).subscribe({
+    69	      next: (response) => {
+    70	        this.isLoading = false;
+    71	        if (response.Search) {
+    72	          const sortedResults = (response.Search as Movie[]).sort((a: Movie, b: Movie) => {
+    73	            return parseInt(b.Year) - parseInt(a.Year);
+    74	          });
+    75	          this.searchResults = sortedResults.slice(0, 5);
+    76	          this.errorMessage = '';
+    77	        } else {
+    78	          this.searchResults = [];
+    79	          this.errorMessage = `No results found for ${this.searchQuery} phrase.`;
+    80	        }
+    81	      },
+    82	      error: () => {
+    83	        this.isLoading = false;
+    84	        this.searchResults = [];
+    85	        this.errorMessage = 'Failed to fetch movies. Please try again.';
+    86	      }
+    87	    });
+    88	  }
+    89	
+    90	  onResultMovie(result:Movie){
+    91	    this.searchResults = [];
+    92	    //console.log(result)
+    93	    this.router.navigate(['/movie', result.imdbID]);
+    94	  }
+    95	}
+src/app/pages/details-movie/details-movie.component.html
+     1	<div class="mt-2 text-white p-6 shadow-lg">
+     2	  <div class="container mx-auto" *ngIf="!isLoading">
+     3	    <div class="flex items-center justify-between bg-black p-8 rounded-lg">
+     4	      <div>
+     5	        <span class="text-yellow-600 text-lg uppercase tracking-wider">{{ movieDetails?.Type }}</span>
+     6	        <h1 class="text-5xl font-bold text-white mt-4">{{ movieDetails?.Title }}</h1>
+     7	        <div class="text-gray-400 text-lg mt-2">
+     8	          <span>{{ movieDetails?.Year }}</span>
+     9	          <span class="mx-2"></span>
+    10	          <span *ngIf="movieDetails?.Type === 'movie'">{{ movieDetails?.Runtime }}</span>
+    11	          <span *ngIf="movieDetails?.Type === 'series'">{{ movieDetails?.totalSeasons }} seasons</span>
+    12	        </div>
+    13	      </div>
+    14	      <div class="flex items-center">
+    15	        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-10 h-10 mr-2">
+    16	        <span class="text-white text-3xl font-bold">{{ movieDetails?.imdbRating }}</span>
+    17	        <span class="text-gray-400 text-lg ml-4">
+    18	          {{ movieDetails?.imdbVotes }}
+    19	          <span class="block">ratings</span>
+    20	        </span>
+    21	      </div>
+    22	    </div>
+    23	
+    24	    <div class="flex mt-6">
+    25	      <img *ngIf="movieDetails?.Poster !=='N/A'" [src]="movieDetails?.Poster" alt="Movie Poster" class="w-60 h-auto rounded-lg shadow-xl object-cover">
+    26	      <img *ngIf="movieDetails?.Poster =='N/A'" [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto">
+    27	      <div class="ml-8 flex-1">
+    28	        <div class="flex items-center bg-primary text-black rounded-lg overflow-hidden">
+    29	          <div class="px-6 py-4 font-bold bg-yellow-600 text-lg">{{ movieDetails?.AwardsT }}</div>
+    30	          <div class="flex-1 px-6 py-4 bg-black text-white border border-primary rounded-r-lg text-lg">{{ movieDetails?.Awards }}</div>
+    31	        </div>
+    32	        <div class="mt-6 flex space-x-4">
+    33	          <span *ngFor="let genre of movieDetails?.Gender" class="bg-gray-700 px-4 py-2 rounded-full text-lg">{{ genre }}</span>
+    34	        </div>
+    35	        <p class="mt-6 text-gray-300 text-lg">{{ movieDetails?.Plot }}</p>
+    36	        <div class="mt-6 text-lg">
+    37	          <p><span class="font-semibold">Director:</span> {{ movieDetails?.Director }}</p>
+    38	          <p><span class="font-semibold">Screenplay:</span> {{ movieDetails?.Writer }}</p>
+    39	          <p><span class="font-semibold">Stars:</span> {{ movieDetails?.Actors }}</p>
+    40	          <p><span class="font-semibold">Countries of Origin:</span> {{ movieDetails?.Country }}</p>
+    41	          <p><span class="font-semibold">Release date:</span> {{ movieDetails?.Released }}</p>
+    42	        </div>
+    43	      </div>
+    44	    </div>
+    45	  </div>
+    46	
+    47	  <div *ngIf="isLoading" class="container mx-auto animate-pulse mt-6">
+    48	    <div class="h-8 bg-gray-700 rounded w-1/3 mb-6"></div>
+    49	    <div class="h-6 bg-gray-700 rounded w-1/5 mb-10"></div>
+    50	    <div class="flex">
+    51	      <div class="w-48 h-72 bg-gray-700 rounded-lg"></div>
+    52	      <div class="ml-8 flex-1 space-y-6">
+    53	        <div class="h-6 bg-gray-700 rounded w-1/6"></div>
+    54	        <div class="h-6 bg-gray-700 rounded w-1/3"></div>
+    55	        <div class="h-6 bg-gray-700 rounded w-full"></div>
+    56	        <div class="h-6 bg-gray-700 rounded w-full"></div>
+    57	        <div class="h-6 bg-gray-700 rounded w-3/4"></div>
+    58	      </div>
+    59	    </div>
+    60	  </div>
+    61	</div>
+
+src/app/pages/details-movie/details-movie.component.scss
+
+src/app/pages/details-movie/details-movie.component.spec.ts
+     1	import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+     2	import { DetailsMovieComponent } from './details-movie.component';
+     3	import { TheMoviesService } from '../../core/services/the-movies.service';
+     4	import { ActivatedRoute, Router } from '@angular/router';
+     5	import { of, throwError } from 'rxjs';
+     6	import { RouterTestingModule } from '@angular/router/testing';
+     7	import { HttpClientTestingModule } from '@angular/common/http/testing';
+     8	
+     9	describe('DetailsMovieComponent', () => {
+    10	  let component: DetailsMovieComponent;
+    11	  let fixture: ComponentFixture<DetailsMovieComponent>;
+    12	  let movieService: TheMoviesService;
+    13	  let router: Router;
+    14	
+    15	  beforeEach(waitForAsync(() => {
+    16	    TestBed.configureTestingModule({
+    17	      imports: [
+    18	        HttpClientTestingModule, 
+    19	        RouterTestingModule,      
+    20	        DetailsMovieComponent     
+    21	      ],
+    22	      providers: [
+    23	        TheMoviesService,
+    24	        {
+    25	          provide: ActivatedRoute,
+    26	          useValue: {
+    27	            paramMap: of({
+    28	              get: (key: string) => 'tt1234567'  
+    29	            })
+    30	          }
+    31	        }
+    32	      ]
+    33	    }).compileComponents();
+    34	  }));
+    35	
+    36	  beforeEach(() => {
+    37	    fixture = TestBed.createComponent(DetailsMovieComponent);
+    38	    component = fixture.componentInstance;
+    39	    movieService = TestBed.inject(TheMoviesService);
+    40	    router = TestBed.inject(Router);
+    41	    spyOn(router, 'navigate');  
+    42	    fixture.detectChanges();
+    43	  });
+    44	
+    45	  it('should create the component', () => {
+    46	    expect(component).toBeTruthy();
+    47	  });
+    48	
+    49	  it('should load movie details on init', () => {
+    50	    const dummyMovieDetails = {
+    51	      Title: 'Test Movie',
+    52	      Type: 'movie',
+    53	      Year: '2022',
+    54	      Runtime: '120 min',
+    55	      imdbRating: '8.0',
+    56	      imdbVotes: '100,000',
+    57	      Poster: 'someposter.jpg',
+    58	      Awards: 'Oscar winner',
+    59	      Genre: 'Action, Drama',
+    60	      Director: 'John Doe',
+    61	      Writer: 'Jane Doe',
+    62	      Actors: 'Actor A, Actor B',
+    63	      Country: 'USA',
+    64	      Released: '2022-01-01'
+    65	    };
+    66	
+    67	    spyOn(movieService, 'getMovieDetails').and.returnValue(of(dummyMovieDetails));
+    68	
+    69	    component.ngOnInit();
+    70	
+    71	    expect(component.isLoading).toBe(false);
+    72	    expect(component.movieDetails).toEqual({
+    73	      ...dummyMovieDetails,
+    74	      AwardsT: "Awards & nominations",
+    75	      Gender: ['Action', 'Drama']
+    76	    });
+    77	  });
+    78	
+    79	  it('should navigate to page-not-found if movie not found', () => {
+    80	    spyOn(movieService, 'getMovieDetails').and.returnValue(of({ Response: 'False', Error: 'Movie not found!' }));
+    81	
+    82	    component.ngOnInit();
+    83	
+    84	    expect(component.isLoading).toBe(false);
+    85	    expect(router.navigate).toHaveBeenCalledWith(['/page-not-found']);
+    86	  });
+    87	
+    88	  it('should handle error when loading movie details', () => {
+    89	    spyOn(movieService, 'getMovieDetails').and.returnValue(throwError(() => new Error('API error')));
+    90	
+    91	    component.ngOnInit();
+    92	
+    93	    expect(component.isLoading).toBe(false);
+    94	    expect(router.navigate).toHaveBeenCalledWith(['/page-not-found']);
+    95	  });
+    96	
+    97	  it('should unsubscribe on destroy', () => {
+    98	    spyOn(component.subscription, 'unsubscribe');
+    99	
+   100	    component.ngOnDestroy();
+   101	
+   102	    expect(component.subscription.unsubscribe).toHaveBeenCalled();
+   103	  });
+   104	});
+
+src/app/pages/details-movie/details-movie.component.ts
+     1	import { Component, OnInit, OnDestroy } from '@angular/core';
+     2	import { Subscription } from 'rxjs';
+     3	import { CommonModule } from '@angular/common';
+     4	import { ActivatedRoute } from '@angular/router';
+     5	import { Observable, of } from 'rxjs';
+     6	import { catchError, switchMap, tap } from 'rxjs/operators';
+     7	import { TheMoviesService } from '../../core/services/the-movies.service';
+     8	import { PipesModule } from "../../core/pipes/pipes.module";
+     9	import { Router } from '@angular/router';
+    10	
+    11	@Component({
+    12	  selector: 'app-details-movie',
+    13	  standalone: true,
+    14	  imports: [
+    15	    CommonModule,
+    16	    PipesModule,
+    17	  ],
+    18	  templateUrl: './details-movie.component.html',
+    19	  styleUrl: './details-movie.component.scss'
+    20	})
+    21	export class DetailsMovieComponent implements OnInit, OnDestroy {
+    22	  movieDetails: any;
+    23	  isLoading: boolean = true;
+    24	  movieId$:Observable<any>;
+    25	  public subscription: Subscription = new Subscription();
+    26	  constructor(
+    27	    private route: ActivatedRoute,
+    28	    private movieService: TheMoviesService,
+    29	    private router: Router
+    30	  ) {
+    31	    this.movieId$ = this.route.paramMap.pipe(
+    32	      switchMap((params) => {
+    33	        const id = params.get('id');
+    34	        return this.movieService.getMovieDetails(id!); 
+    35	      })
+    36	    );
+    37	  }
+    38	  ngOnInit(): void {
+    39	    this.subscription=this.movieId$.subscribe({
+    40	      next: (response) => {
+    41	        if (response.Response === "False" || response.Error) {
+    42	          this.isLoading = false;
+    43	          this.router.navigate(['/page-not-found']);
+    44	          return
+    45	        }
+    46	          this.movieDetails = response;
+    47	          this.movieDetails.AwardsT= "Awards & nominations";
+    48	          this.movieDetails.Gender=this.movieDetails.Genre
+    49	          ? this.movieDetails.Genre.split(',').map((genre: string) => genre.trim())
+    50	          : [];
+    51	          this.isLoading = false;
+    52	          //console.log(this.movieDetails)
+    53	        
+    54	      },
+    55	      error: (err) => {
+    56	        console.error('Error occurred:', err.message);
+    57	        this.isLoading = false;
+    58	        this.router.navigate(['/page-not-found']);
+    59	      }
+    60	    })
+    61	  }
+    62	  ngOnDestroy(): void {
+    63	    this.subscription.unsubscribe(); 
+    64	  }
+    65	}
+src/app/pages/home/home.component.html
+     1	<div class="mt-8 text-white p-4 shadow-md" *ngIf="!isLoading">
+     2	    <div class="container mx-auto featured-today">
+     3	        <h2 class="section-title">{{titleToday}}</h2>
+     4	        <div class="tabs-container">
+     5	            <button class="tab" [ngClass]="{'active': activeTab === 'movies'}" (click)="setActiveTab('movies')">Movies</button>
+     6	            <button class="tab" [ngClass]="{'active': activeTab === 'series'}" (click)="setActiveTab('series')">Series</button>
+     7	        </div>
+     8	        <div class="tab-content">
+     9	            <div *ngIf="activeTab === 'movies'" class="swiper-container relative">
+    10	                <div class="swiper-wrapper flex items-center">
+    11	                    <div class="swiper-slide" *ngFor="let movie of moviesList" (click)="onResultMovie(movie)">
+    12	                        <div class="relative ">
+    13	                        
+    14	                        <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="movie?.Poster" alt="{{ movie?.Title }}">
+    15	                        <div class="rating">
+    16	                            <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+    17	                            <span class="ml-1 text-base sm:text-xl">{{ movie?.imdbRating }}</span>
+    18	                        </div>
+    19	                        </div>
+    20	                        <p class="text-center text-base sm:text-xl mt-2">{{ movie?.Title }}</p>
+    21	                    </div>
+    22	                </div>
+    23	                
+    24	                <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+    25	                    <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+    26	                </div>
+    27	                <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+    28	                    <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+    29	                </div>
+    30	                <div class="swiper-pagination"></div>
+    31	            </div>
+    32	
+    33	          
+    34	            <div *ngIf="activeTab === 'series'" class="swiper-container relative">
+    35	                <div class="swiper-wrapper">
+    36	                <div class="swiper-slide" *ngFor="let series of seriesList" (click)="onResultMovie(series)">
+    37	                    <div class="relative">
+    38	                    <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="series.Poster" alt="{{ series.Title }}">
+    39	                    <div class="rating">
+    40	                        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+    41	                        <span class="ml-1 text-base sm:text-xl">{{ series.imdbRating }}</span>
+    42	                    </div>
+    43	                    </div>
+    44	                    <p class="text-center text-base sm:text-xl mt-2">{{ series.Title }}</p>
+    45	                </div>
+    46	                </div>
+    47	                <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+    48	                    <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+    49	                </div>
+    50	                <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+    51	                    <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+    52	                </div>
+    53	                <div class="swiper-pagination"></div>
+    54	            </div>
+    55	        </div>
+    56	    </div>
+    57	
+    58	    <div class="container mx-auto premieres">
+    59	        <h2 class="section-title">{{titlePremier}}</h2>
+    60	        <div class="swiper-container relative">
+    61	            <div class="swiper-wrapper">
+    62	                <div class="swiper-slide" *ngFor="let premiere of premieres" (click)="onResultMovie(premiere)">
+    63	                <div class="relative">
+    64	                    <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="premiere?.Poster" alt="{{ premiere?.Title }}">
+    65	                    <div class="rating">
+    66	                        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+    67	                    <span class="ml-1 text-base sm:text-xl">{{ premiere?.imdbRating }}</span>
+    68	                    </div>
+    69	                </div>
+    70	                <p class="text-center text-base sm:text-xl mt-2">{{ premiere?.Title }}</p>
+    71	                </div>
+    72	            </div>
+    73	            <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+    74	                <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+    75	            </div>
+    76	            <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+    77	                <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+    78	            </div>
+    79	            <div class="swiper-pagination"></div>
+    80	        </div>
+    81	    </div>
+    82	</div>
+    83	
+    84	<div class="mt-4 text-white p-4 shadow-md" *ngIf="isLoading">
+    85	    <div class="container mx-auto featured-today">
+    86	        <div class="skeleton-container">
+    87	            <div class="skeleton-header mb-4">
+    88	              <div class="skeleton h-8 w-1/4 mb-2"></div>
+    89	              <div class="skeleton-tabs flex gap-4">
+    90	                <div class="skeleton h-6 w-16" *ngFor="let _ of [].constructor(2)"></div>
+    91	              </div>
+    92	            </div>
+    93	            
+    94	            <div class="skeleton-cards flex gap-4 overflow-hidden pb-4">
+    95	              <div class="skeleton-card flex-none w-40 sm:w-60 h-64 sm:h-96" *ngFor="let _ of [].constructor(6)"></div>
+    96	            </div>
+    97	            
+    98	            <div class="skeleton-header mt-8 mb-4">
+    99	              <div class="skeleton h-8 w-1/4 mb-2"></div>
+   100	            </div>
+   101	            
+   102	            <div class="skeleton-cards flex gap-4 overflow-hidden pb-4">
+   103	              <div class="skeleton-card flex-none w-40 sm:w-60 h-64 sm:h-96" *ngFor="let _ of [].constructor(6)"></div>
+   104	            </div>
+   105	          </div>
+   106	    </div>
+   107	</div>
+src/app/pages/home/home.component.scss
+     1	.section-title {
+     2	  @apply text-white text-3xl font-bold mb-4 text-yellow-600;
+     3	}
+     4	
+     5	.tabs {
+     6	  @apply flex gap-4 mb-6;
+     7	
+     8	  .tab {
+     9	    @apply px-4 py-2 text-white bg-gray-800 rounded-md cursor-pointer;
+    10	
+    11	    &.active {
+    12	      @apply bg-blue-600;
+    13	    }
+    14	  }
+    15	}
+    16	
+    17	.tabs-container {
+    18	  display: flex;
+    19	  border-bottom: 1px solid #333; 
+    20	}
+    21	.tab {
+    22	  position: relative;
+    23	  padding: 0.5rem 1rem; 
+    24	  @apply text-base sm:text-xl mt-2; 
+    25	  color: #777;
+    26	  background: none;
+    27	  border: none;
+    28	  cursor: pointer;
+    29	  transition: color 0.3s ease;
+    30	
+    31	  &:hover {
+    32	    color: #fff; 
+    33	  }
+    34	
+    35	  &.active {
+    36	    color: #fff;
+    37	    font-weight: bold;
+    38	  }
+    39	
+    40	  &.active::after {
+    41	    content: '';
+    42	    position: absolute;
+    43	    left: 0;
+    44	    bottom: -1px;
+    45	    width: 100%;
+    46	    height: 3px;
+    47	    background-color: #fff; 
+    48	  }
+    49	}
+    50	.swiper-container {
+    51	  width: 100%;
+    52	  height: auto;
+    53	  overflow-x: hidden;
+    54	}
+    55	
+    56	.swiper-wrapper {
+    57	  display: inline-flex;
+    58	  gap: 1rem;
+    59	  overflow-x: hidden;
+    60	}
+    61	
+    62	
+    63	.swiper-slide {
+    64	    display: flex;
+    65	    flex-direction: column;
+    66	    align-items: center;
+    67	    justify-content: center;
+    68	    width: 400px; 
+    69	    padding: 1rem;
+    70	    background-color: #070707; 
+    71	    border-radius: 0.5rem; 
+    72	  }
+    73	
+    74	
+    75	.poster-img {
+    76	  @apply rounded-lg object-cover;
+    77	  width: 171px;
+    78	  height: 258px;
+    79	
+    80	
+    81	  @media (min-width: 640px) {
+    82	   width: 300px;
+    83	   height: 450px;
+    84	  }
+    85	
+    86	}
+    87	.rating {
+    88	  position: absolute;
+    89	  bottom: 0;
+    90	  left: 0;
+    91	  background-color: rgba(0, 0, 0, 0.75);
+    92	  color: white;
+    93	  padding: 0.5rem;
+    94	  border-radius: 0.5rem 0.5rem 0 0;
+    95	  display: flex;
+    96	  align-items: center;
+    97	 
+    98	  @media (min-width: 640px) {
+    99	    width: 40%;
+   100	  }
+   101	  @media (max-width: 639px) {
+   102	    width: 70;
+   103	  }
+   104	}
+   105	
+   106	.swiper-pagination {
+   107	  margin-top: 1rem; /* mt-4 */
+   108	}
+   109	
+   110	.swiper-button-next,
+   111	.swiper-button-prev {
+   112	  color: white;
+   113	}
+   114	
+   115	.swiper-scrollbar {
+   116	  background-color: #4b5563; 
+   117	}
+   118	
+   119	
+   120	.swiper-button-next, .swiper-button-prev {
+   121	  color: white; 
+   122	}
+   123	
+   124	.swiper-button-next {
+   125	  right: 10px;
+   126	}
+   127	
+   128	.swiper-button-prev {
+   129	  left: 10px;
+   130	}
+   131	.skeleton-container {
+   132	  overflow-x: hidden;
+   133	}
+   134	.skeleton {
+   135	  @apply bg-gray-700 animate-pulse rounded-lg; 
+   136	}
+   137	
+   138	.skeleton-header .skeleton {
+   139	  @apply mb-4; 
+   140	}
+   141	
+   142	.skeleton-card {
+   143	  @apply bg-gray-700 animate-pulse rounded-lg; 
+   144	}
+src/app/pages/home/home.component.spec.ts
+     1	import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+     2	import { HomeComponent } from './home.component';
+     3	import { TheMoviesService } from '../../core/services/the-movies.service';
+     4	import { Router, NavigationEnd } from '@angular/router';
+     5	import { of, throwError, Subject } from 'rxjs';
+     6	import { CommonModule } from '@angular/common';
+     7	import { PipesModule } from '../../core/pipes/pipes.module';
+     8	import { TransferState } from '@angular/core';
+     9	import { Swiper } from 'swiper';
+    10	import { Movie } from '../../core/interface/movie';
+    11	
+    12	describe('HomeComponent', () => {
+    13	  let component: HomeComponent;
+    14	  let fixture: ComponentFixture<HomeComponent>;
+    15	  let movieService: jasmine.SpyObj<TheMoviesService>;
+    16	  let router: Router;
+    17	  let routerEventsSubject: Subject<any>;
+    18	
+    19	  beforeEach(waitForAsync(() => {
+    20	    const movieServiceSpy = jasmine.createSpyObj('TheMoviesService', ['getAllMovies', 'getAllSeries', 'getPremieres']);
+    21	  
+    22	    movieServiceSpy.getAllMovies.and.returnValue(of([])); 
+    23	    movieServiceSpy.getAllSeries.and.returnValue(of([]));
+    24	    movieServiceSpy.getPremieres.and.returnValue(of([]));
+    25	  
+    26	    routerEventsSubject = new Subject<any>();
+    27	  
+    28	    TestBed.configureTestingModule({
+    29	      imports: [CommonModule, PipesModule, HomeComponent],
+    30	      providers: [
+    31	        { provide: TheMoviesService, useValue: movieServiceSpy },
+    32	        { provide: Router, useValue: { navigate: jasmine.createSpy('navigate'), events: routerEventsSubject.asObservable() } },
+    33	        TransferState
+    34	      ]
+    35	    }).compileComponents();
+    36	  
+    37	    movieService = TestBed.inject(TheMoviesService) as jasmine.SpyObj<TheMoviesService>;
+    38	    router = TestBed.inject(Router);
+    39	  }));
+    40	  
+    41	  beforeEach(() => {
+    42	    fixture = TestBed.createComponent(HomeComponent);
+    43	    component = fixture.componentInstance;
+    44	    fixture.detectChanges();
+    45	  });
+    46	
+    47	  afterEach(() => {
+    48	    routerEventsSubject.complete();
+    49	  });
+    50	
+    51	  it('should create the component', () => {
+    52	    expect(component).toBeTruthy();
+    53	  });
+    54	
+    55	  it('should load initial data from localStorage', () => {
+    56	    const savedMovies = [{ Title: 'Test Movie', imdbID: 'tt1234567' }];
+    57	    const savedSeries = [{ Title: 'Test Series', imdbID: 'tt7654321' }];
+    58	    const savedPremieres = [{ Title: 'Test Premiere', imdbID: 'tt1122334' }];
+    59	
+    60	    spyOn(localStorage, 'getItem').and.callFake((key) => {
+    61	      if (key === 'moviesList') return JSON.stringify(savedMovies);
+    62	      if (key === 'seriesList') return JSON.stringify(savedSeries);
+    63	      if (key === 'premieresList') return JSON.stringify(savedPremieres);
+    64	      return null;
+    65	    });
+    66	
+    67	    component.ngOnInit();
+    68	
+    69	    expect(component.moviesList).toEqual(savedMovies);
+    70	    expect(component.seriesList).toEqual(savedSeries);
+    71	    expect(component.premieres).toEqual(savedPremieres);
+    72	    expect(component.isLoading).toBe(false);
+    73	  });
+    74	
+    75	  it('should initialize Swiper after view init', () => {
+    76	    spyOn(component, 'initSwiper').and.callThrough();
+    77	
+    78	    component.ngAfterViewInit();
+    79	
+    80	    expect(component.initSwiper).toHaveBeenCalled();
+    81	    expect(component.swiper).toBeDefined();
+    82	  });
+    83	
+    84	  it('should set active tab correctly', () => {
+    85	    component.setActiveTab('series');
+    86	    expect(component.activeTab).toBe('series');
+    87	
+    88	    component.setActiveTab('movies');
+    89	    expect(component.activeTab).toBe('movies');
+    90	  });
+    91	
+    92	  it('should load more content based on active tab', () => {
+    93	    spyOn(component, 'moreLoadMovies');
+    94	    spyOn(component, 'moreLoadSeries');
+    95	    spyOn(component, 'moreLoadPremieres');
+    96	
+    97	    component.activeTab = 'movies';
+    98	    component.moreLoadContent();
+    99	    expect(component.moreLoadMovies).toHaveBeenCalled();
+   100	
+   101	    component.activeTab = 'series';
+   102	    component.moreLoadContent();
+   103	    expect(component.moreLoadSeries).toHaveBeenCalled();
+   104	
+   105	    component.activeTab = 'premieres';
+   106	    component.moreLoadContent();
+   107	    expect(component.moreLoadPremieres).toHaveBeenCalled();
+   108	  });
+   109	
+   110	  it('should navigate to movie detail on movie click', () => {
+   111	    const movie = { imdbID: 'tt1234567' };
+   112	    component.onResultMovie(movie as Movie);
+   113	
+   114	    expect(router.navigate).toHaveBeenCalledWith(['/movie', 'tt1234567']);
+   115	  });
+   116	
+   117	  it('should unsubscribe from router events on destroy', () => {
+   118	    spyOn(component.routerSubscription, 'unsubscribe');
+   119	    component.ngOnDestroy();
+   120	    expect(component.routerSubscription.unsubscribe).toHaveBeenCalled();
+   121	  });
+   122	
+   123	});
+
+src/app/pages/home/home.component.ts
+     1	import { 
+     2	  Component, OnInit, PLATFORM_ID, 
+     3	  Inject, AfterViewInit, ChangeDetectorRef,
+     4	  OnDestroy
+     5	} from '@angular/core';
+     6	import { TheMoviesService } from '../../core/services/the-movies.service';
+     7	import { PipesModule } from '../../core/pipes/pipes.module';
+     8	import { CommonModule, isPlatformBrowser } from '@angular/common';
+     9	import { NavigationEnd, Router } from '@angular/router';
+    10	import { Movie } from '../../core/interface/movie';
+    11	import Swiper from 'swiper';
+    12	import { Navigation, Pagination, Scrollbar } from 'swiper/modules';
+    13	import { Subscription, forkJoin } from 'rxjs';
+    14	
+    15	Swiper.use([Navigation, Pagination, Scrollbar]);
+    16	
+    17	@Component({
+    18	  selector: 'app-home',
+    19	  standalone: true,
+    20	  imports: [
+    21	    PipesModule,
+    22	    CommonModule
+    23	  ],
+    24	  templateUrl: './home.component.html',
+    25	  styleUrls: ['./home.component.scss']
+    26	})
+    27	export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
+    28	
+    29	  public routerSubscription: Subscription;
+    30	  activeTab: string = 'movies';
+    31	  moviesList: any[] = [];
+    32	  seriesList: any[] = [];
+    33	  premieres: any[] = [];
+    34	  pageMovies: number = 1;
+    35	  pageSeries: number = 1;
+    36	  pagePremieres: number = 1;
+    37	  titleToday: string = "Featured Today";
+    38	  titlePremier: string = "Premieres and Announcements";
+    39	  swiper: Swiper | undefined;
+    40	  isLoading: boolean = true;
+    41	
+    42	
+    43	  constructor(
+    44	    private movieService: TheMoviesService,
+    45	    private router: Router,
+    46	    private cdr: ChangeDetectorRef,
+    47	    @Inject(PLATFORM_ID) private platformId: Object
+    48	  ) { 
+    49	    this.routerSubscription = new Subscription(); 
+    50	  }
+    51	
+    52	  ngOnInit(): void {
+    53	    if (isPlatformBrowser(this.platformId)) {
+    54	      const savedMoviesList = localStorage.getItem('moviesList');
+    55	      const savedSeriesList = localStorage.getItem('seriesList');
+    56	      const savedPremieresList = localStorage.getItem('premieresList');
+    57	  
+    58	      if (savedMoviesList && savedSeriesList && savedPremieresList) {
+    59	        this.moviesList = JSON.parse(savedMoviesList);
+    60	        this.seriesList = JSON.parse(savedSeriesList);
+    61	        this.premieres = JSON.parse(savedPremieresList);
+    62	        this.isLoading = false;
+    63	      } else {
+    64	        this.loadInitialData();
+    65	      }
+    66	    } else {
+    67	      this.loadInitialData();  // Cargar datos si no estamos en el navegador
+    68	    }
+    69	  
+    70	    this.routerSubscription.add(
+    71	      this.router.events.subscribe(event => {
+    72	        if (event instanceof NavigationEnd) {
+    73	          if (this.moviesList.length === 0 || this.seriesList.length === 0 || this.premieres.length === 0) {
+    74	            this.loadInitialData();
+    75	          }
+    76	        }
+    77	      })
+    78	    );
+    79	  }
+    80	  
+    81	
+    82	  ngAfterViewInit(): void {
+    83	    if (isPlatformBrowser(this.platformId)) {
+    84	      this.initSwiper();
+    85	    }
+    86	  }
+    87	
+    88	  loadInitialData() {
+    89	    this.isLoading = true;
+    90	  
+    91	    forkJoin({
+    92	      movies: this.movieService.getAllMovies(this.pageMovies),
+    93	      series: this.movieService.getAllSeries(this.pageSeries),
+    94	      premieres: this.movieService.getPremieres(this.pagePremieres)
+    95	    }).subscribe({
+    96	      next: ({ movies, series, premieres }) => {
+    97	        if (movies && movies.length > 0) {
+    98	          this.moviesList = [...this.moviesList, ...movies];
+    99	        }
+   100	        if (series && series.length > 0) {
+   101	          this.seriesList = [...this.seriesList, ...series];
+   102	        }
+   103	        if (premieres && premieres.length > 0) {
+   104	          this.premieres = [...this.premieres, ...premieres];
+   105	        }
+   106	  
+   107	        // Solo almacenar en localStorage si estamos en el navegador
+   108	        if (isPlatformBrowser(this.platformId)) {
+   109	          localStorage.setItem('moviesList', JSON.stringify(this.moviesList));
+   110	          localStorage.setItem('seriesList', JSON.stringify(this.seriesList));
+   111	          localStorage.setItem('premieresList', JSON.stringify(this.premieres));
+   112	        }
+   113	  
+   114	        this.isLoading = false;
+   115	        this.cdr.detectChanges();
+   116	      },
+   117	      error: (err) => {
+   118	        console.error('Error loading data:', err);
+   119	        this.isLoading = false;
+   120	        this.router.navigate(['/page-not-found']);
+   121	      }
+   122	    });
+   123	  }
+   124	  
+   125	
+   126	  initSwiper() {
+   127	    this.swiper = new Swiper('.swiper-container', {
+   128	      slidesPerView: 2.8,
+   129	      spaceBetween: 3.2,
+   130	      breakpoints: {
+   131	        640: { slidesPerView: 4.5, spaceBetween: 10 },
+   132	        1024: { slidesPerView: 5.5, spaceBetween: 10 }
+   133	      },
+   134	      navigation: {
+   135	        nextEl: '.swiper-button-next',
+   136	        prevEl: '.swiper-button-prev',
+   137	      },
+   138	      pagination: {
+   139	        el: '.swiper-pagination',
+   140	        clickable: true,
+   141	      },
+   142	      scrollbar: {
+   143	        el: '.swiper-scrollbar',
+   144	        draggable: true,
+   145	      },
+   146	      on: {
+   147	        reachEnd: () => this.moreLoadContent(),
+   148	      },
+   149	    });
+   150	  }
+   151	
+   152	  setActiveTab(tab: string) {
+   153	    this.activeTab = tab;
+   154	  }
+   155	
+   156	  moreLoadContent() {
+   157	    if (this.activeTab === 'movies') {
+   158	      this.moreLoadMovies();
+   159	    } else if (this.activeTab === 'series') {
+   160	      this.moreLoadSeries();
+   161	    } else {
+   162	      this.moreLoadPremieres();
+   163	    }
+   164	  }
+   165	
+   166	  moreLoadMovies() {
+   167	    this.pageMovies++;
+   168	    this.movieService.getAllMovies(this.pageMovies).subscribe({
+   169	      next: (movies: any[]) => {
+   170	        this.moviesList = [...this.moviesList, ...movies];
+   171	        localStorage.setItem('moviesList', JSON.stringify(this.moviesList)); // Actualizar localStorage
+   172	        this.cdr.detectChanges();
+   173	      },
+   174	      error: (err) => { 
+   175	        console.error('Error loading more movies:', err);
+   176	      }
+   177	    });
+   178	  }
+   179	
+   180	  moreLoadSeries() {
+   181	    this.pageSeries++;
+   182	    this.movieService.getAllSeries(this.pageSeries).subscribe({
+   183	      next: (series: any[]) => {
+   184	        this.seriesList = [...this.seriesList, ...series];
+   185	        localStorage.setItem('seriesList', JSON.stringify(this.seriesList)); // Actualizar localStorage
+   186	        this.cdr.detectChanges();
+   187	      },
+   188	      error: (err) => { 
+   189	        console.error('Error loading more series:', err);
+   190	      }
+   191	    });
+   192	  }
+   193	
+   194	  moreLoadPremieres() {
+   195	    this.pagePremieres++;
+   196	    this.movieService.getPremieres(this.pagePremieres).subscribe({
+   197	      next: (premieres: any[]) => {
+   198	        this.premieres = [...this.premieres, ...premieres];
+   199	        localStorage.setItem('premieresList', JSON.stringify(this.premieres)); // Actualizar localStorage
+   200	        this.cdr.detectChanges();
+   201	      },
+   202	      error: (err) => { 
+   203	        console.error('Error loading more premieres:', err);
+   204	      }
+   205	    });
+   206	  }
+   207	
+   208	  onResultMovie(result: Movie) {
+   209	    this.router.navigate(['/movie', result.imdbID]);
+   210	  }
+   211	
+   212	  ngOnDestroy(): void {
+   213	    this.routerSubscription.unsubscribe();
+   214	  }
+   215	}
+
+src/app/pages/page-not-found/page-not-found.component.html
+     1	<div class=" mt-60 flex flex flex-col items-center">
+     2	    <img [src]="'not-found' | imgPng: 'imgs'" alt="Page not fount" >
+     3	    <div class="mt-2 text-2xl font-bold mt-4">{{title}}</div>
+     4	    <div class="mt-2 text-sm ">{{text}}</div>
+     5	    <button [routerLink]="['/']" class="mt-2 bg-yellow-600 text-black font-semibold py-2 px-4 rounded-md hover:bg-yellow-500 transition duration-300 ease-in-out">
+     6	        {{titleButton}}
+     7	    </button>
+     8	</div>
+
+src/app/pages/page-not-found/page-not-found.component.scss
+
+src/app/pages/page-not-found/page-not-found.component.spec.ts
+     1	import { ComponentFixture, TestBed } from '@angular/core/testing';
+     2	import { PageNotFoundComponent } from './page-not-found.component';
+     3	import { RouterTestingModule } from '@angular/router/testing';
+     4	import { By } from '@angular/platform-browser';
+     5	import { Router } from '@angular/router';
+     6	
+     7	describe('PageNotFoundComponent', () => {
+     8	  let component: PageNotFoundComponent;
+     9	  let fixture: ComponentFixture<PageNotFoundComponent>;
+    10	  let router: Router;
+    11	
+    12	  beforeEach(async () => {
+    13	    await TestBed.configureTestingModule({
+    14	      imports: [
+    15	        RouterTestingModule.withRoutes([]),  
+    16	        PageNotFoundComponent 
+    17	      ]
+    18	    }).compileComponents();
+    19	  });
+    20	
+    21	  beforeEach(() => {
+    22	    fixture = TestBed.createComponent(PageNotFoundComponent);
+    23	    component = fixture.componentInstance;
+    24	    router = TestBed.inject(Router);  
+    25	    spyOn(router, 'navigate'); 
+    26	    fixture.detectChanges();
+    27	  });
+    28	
+    29	  it('should create the component', () => {
+    30	    expect(component).toBeTruthy();
+    31	  });
+    32	
+    33	  
+    34	});
+
+src/app/pages/page-not-found/page-not-found.component.ts
+     1	import { Component } from '@angular/core';
+     2	import { CommonModule } from '@angular/common';
+     3	import { PipesModule } from "../../core/pipes/pipes.module";
+     4	import { RouterModule } from '@angular/router';
+     5	
+     6	@Component({
+     7	  selector: 'app-page-not-found',
+     8	  standalone: true,
+     9	  imports: [
+    10	    CommonModule,
+    11	    PipesModule,
+    12	    RouterModule
+    13	  ],
+    14	  templateUrl: './page-not-found.component.html',
+    15	  styleUrl: './page-not-found.component.scss'
+    16	})
+    17	export class PageNotFoundComponent {
+    18	  title:string = "Ooops...";
+    19	  text: string = "Something went wrong.";
+    20	  titleButton: string = "Refresh";
+    21	}
+
+src/index.html
+     1	<!doctype html>
+     2	<html lang="en">
+     3	<head>
+     4	  <meta charset="utf-8">
+     5	  <title>FindMovies</title>
+     6	  <base href="/">
+     7	  <meta name="viewport" content="width=device-width, initial-scale=1">
+     8	  <link rel="icon" type="image/x-icon" href="imgs/favico.png">
+     9	  <link rel="manifest" href="manifest.webmanifest">
+    10	  <meta name="theme-color" content="#FFEB3B">
+    11	</head>
+    12	<body>
+    13	  <app-root></app-root>
+    14	  <noscript>La mejores películas gratis se encuentra aquí</noscript>
+    15	</body>
+    16	</html>
+
+src/main.server.ts
+     1	import { bootstrapApplication } from '@angular/platform-browser';
+     2	import { AppComponent } from './app/app.component';
+     3	import { config } from './app/app.config.server';
+     4	
+     5	const bootstrap = () => bootstrapApplication(AppComponent, config);
+     6	
+     7	export default bootstrap;
+
+src/main.ts
+     1	import { bootstrapApplication } from '@angular/platform-browser';
+     2	import { appConfig } from './app/app.config';
+     3	import { AppComponent } from './app/app.component';
+     4	
+     5	bootstrapApplication(AppComponent, appConfig)
+     6	  .catch((err) => console.error(err));
+
+src/styles.scss
+     1	/* You can add global styles to this file, and also import other style files */
+     2	@import 'tailwindcss/base';
+     3	@import 'tailwindcss/components';
+     4	@import 'tailwindcss/utilities';
+     5	
+     6	
+     7	html, body {
+     8	    background-color: black;
+     9	    color: white; 
+    10	    margin: 0;
+    11	    padding: 0;
+    12	    height: 100%;
+    13	    width: 100%;
+    14	  }
+

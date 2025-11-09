@@ -1,0 +1,107 @@
+<div class="mt-8 text-white p-4 shadow-md" *ngIf="!isLoading">
+    <div class="container mx-auto featured-today">
+        <h2 class="section-title">{{titleToday}}</h2>
+        <div class="tabs-container">
+            <button class="tab" [ngClass]="{'active': activeTab === 'movies'}" (click)="setActiveTab('movies')">Movies</button>
+            <button class="tab" [ngClass]="{'active': activeTab === 'series'}" (click)="setActiveTab('series')">Series</button>
+        </div>
+        <div class="tab-content">
+            <div *ngIf="activeTab === 'movies'" class="swiper-container relative">
+                <div class="swiper-wrapper flex items-center">
+                    <div class="swiper-slide" *ngFor="let movie of moviesList" (click)="onResultMovie(movie)">
+                        <div class="relative ">
+                        
+                        <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="movie?.Poster" alt="{{ movie?.Title }}">
+                        <div class="rating">
+                            <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+                            <span class="ml-1 text-base sm:text-xl">{{ movie?.imdbRating }}</span>
+                        </div>
+                        </div>
+                        <p class="text-center text-base sm:text-xl mt-2">{{ movie?.Title }}</p>
+                    </div>
+                </div>
+                
+                <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+                    <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+                </div>
+                <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+                    <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+                </div>
+                <div class="swiper-pagination"></div>
+            </div>
+
+          
+            <div *ngIf="activeTab === 'series'" class="swiper-container relative">
+                <div class="swiper-wrapper">
+                <div class="swiper-slide" *ngFor="let series of seriesList" (click)="onResultMovie(series)">
+                    <div class="relative">
+                    <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="series.Poster" alt="{{ series.Title }}">
+                    <div class="rating">
+                        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+                        <span class="ml-1 text-base sm:text-xl">{{ series.imdbRating }}</span>
+                    </div>
+                    </div>
+                    <p class="text-center text-base sm:text-xl mt-2">{{ series.Title }}</p>
+                </div>
+                </div>
+                <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+                    <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+                </div>
+                <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+                    <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+                </div>
+                <div class="swiper-pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto premieres">
+        <h2 class="section-title">{{titlePremier}}</h2>
+        <div class="swiper-container relative">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide" *ngFor="let premiere of premieres" (click)="onResultMovie(premiere)">
+                <div class="relative">
+                    <img class="poster-img cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 hover:brightness-11" [src]="premiere?.Poster" alt="{{ premiere?.Title }}">
+                    <div class="rating">
+                        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-4 h-4 sm:w-8 sm:h-8">
+                    <span class="ml-1 text-base sm:text-xl">{{ premiere?.imdbRating }}</span>
+                    </div>
+                </div>
+                <p class="text-center text-base sm:text-xl mt-2">{{ premiere?.Title }}</p>
+                </div>
+            </div>
+            <div class="swiper-button-prev absolute top-1/2 left-0 -translate-y-1/2 z-10">
+                <img [src]="'arrow-icon-prev' | imgPng: 'imgs'" alt="arrow-prev" >
+            </div>
+            <div class="swiper-button-next absolute top-1/2 right-0 -translate-y-1/2 z-10">
+                <img [src]="'arrow-icon-next' | imgPng: 'imgs'" alt="arrow-next" >
+            </div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 text-white p-4 shadow-md" *ngIf="isLoading">
+    <div class="container mx-auto featured-today">
+        <div class="skeleton-container">
+            <div class="skeleton-header mb-4">
+              <div class="skeleton h-8 w-1/4 mb-2"></div>
+              <div class="skeleton-tabs flex gap-4">
+                <div class="skeleton h-6 w-16" *ngFor="let _ of [].constructor(2)"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-cards flex gap-4 overflow-hidden pb-4">
+              <div class="skeleton-card flex-none w-40 sm:w-60 h-64 sm:h-96" *ngFor="let _ of [].constructor(6)"></div>
+            </div>
+            
+            <div class="skeleton-header mt-8 mb-4">
+              <div class="skeleton h-8 w-1/4 mb-2"></div>
+            </div>
+            
+            <div class="skeleton-cards flex gap-4 overflow-hidden pb-4">
+              <div class="skeleton-card flex-none w-40 sm:w-60 h-64 sm:h-96" *ngFor="let _ of [].constructor(6)"></div>
+            </div>
+          </div>
+    </div>
+</div>

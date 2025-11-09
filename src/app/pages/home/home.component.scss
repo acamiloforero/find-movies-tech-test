@@ -1,0 +1,144 @@
+.section-title {
+  @apply text-white text-3xl font-bold mb-4 text-yellow-600;
+}
+
+.tabs {
+  @apply flex gap-4 mb-6;
+
+  .tab {
+    @apply px-4 py-2 text-white bg-gray-800 rounded-md cursor-pointer;
+
+    &.active {
+      @apply bg-blue-600;
+    }
+  }
+}
+
+.tabs-container {
+  display: flex;
+  border-bottom: 1px solid #333; 
+}
+.tab {
+  position: relative;
+  padding: 0.5rem 1rem; 
+  @apply text-base sm:text-xl mt-2; 
+  color: #777;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: #fff; 
+  }
+
+  &.active {
+    color: #fff;
+    font-weight: bold;
+  }
+
+  &.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 3px;
+    background-color: #fff; 
+  }
+}
+.swiper-container {
+  width: 100%;
+  height: auto;
+  overflow-x: hidden;
+}
+
+.swiper-wrapper {
+  display: inline-flex;
+  gap: 1rem;
+  overflow-x: hidden;
+}
+
+
+.swiper-slide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 400px; 
+    padding: 1rem;
+    background-color: #070707; 
+    border-radius: 0.5rem; 
+  }
+
+
+.poster-img {
+  @apply rounded-lg object-cover;
+  width: 171px;
+  height: 258px;
+
+
+  @media (min-width: 640px) {
+   width: 300px;
+   height: 450px;
+  }
+
+}
+.rating {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  display: flex;
+  align-items: center;
+ 
+  @media (min-width: 640px) {
+    width: 40%;
+  }
+  @media (max-width: 639px) {
+    width: 70;
+  }
+}
+
+.swiper-pagination {
+  margin-top: 1rem; /* mt-4 */
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: white;
+}
+
+.swiper-scrollbar {
+  background-color: #4b5563; 
+}
+
+
+.swiper-button-next, .swiper-button-prev {
+  color: white; 
+}
+
+.swiper-button-next {
+  right: 10px;
+}
+
+.swiper-button-prev {
+  left: 10px;
+}
+.skeleton-container {
+  overflow-x: hidden;
+}
+.skeleton {
+  @apply bg-gray-700 animate-pulse rounded-lg; 
+}
+
+.skeleton-header .skeleton {
+  @apply mb-4; 
+}
+
+.skeleton-card {
+  @apply bg-gray-700 animate-pulse rounded-lg; 
+}

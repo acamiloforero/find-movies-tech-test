@@ -1,0 +1,18 @@
+.space-4px {
+    width: 4px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  button[disabled] {
+    background-color: grey;
+    cursor: not-allowed;
+  }
+  .ml-190{
+    margin-left: 190px;
+  }
