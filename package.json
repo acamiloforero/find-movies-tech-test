@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:findMovies": "node dist/find-movies/server/server.mjs",
-    "start:bff": "ts-node server.ts",
+    "build:bff": "tsc -p tsconfig.server.json",
+    "start:bff": "node dist/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json,css}\""
