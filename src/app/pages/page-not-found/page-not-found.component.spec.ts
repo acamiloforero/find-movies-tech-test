@@ -11,24 +11,19 @@ describe('PageNotFoundComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        RouterTestingModule.withRoutes([]),  
-        PageNotFoundComponent 
-      ]
+      imports: [RouterTestingModule.withRoutes([]), PageNotFoundComponent],
     }).compileComponents();
   });
 
   beforeEach(() => {
     fixture = TestBed.createComponent(PageNotFoundComponent);
     component = fixture.componentInstance;
-    router = TestBed.inject(Router);  
-    spyOn(router, 'navigate'); 
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
     fixture.detectChanges();
   });
 
   it('should create the component', () => {
     expect(component).toBeTruthy();
   });
-
-  
 });

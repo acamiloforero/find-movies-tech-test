@@ -2,13 +2,11 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
   name: 'imgIcons',
-  standalone: true
+  standalone: true,
 })
 export class ImgIconsPipe implements PipeTransform {
-
   transform(icon: string, folder?: string): string {
-    const URL = ""
+    const URL = '';
     return `${URL}/${folder}/${icon}.svg`;
   }
-
 }

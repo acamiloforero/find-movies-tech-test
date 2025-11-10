@@ -10,7 +10,7 @@ describe('TheMoviesService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [TheMoviesService]
+      providers: [TheMoviesService],
     });
     service = TestBed.inject(TheMoviesService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -28,9 +28,9 @@ describe('TheMoviesService', () => {
     it('should return an error if query is less than 3 characters', () => {
       service.searchMovies('ab').subscribe({
         next: () => fail('should have failed with a query length error'),
-        error: error => {
+        error: (error) => {
           expect(error.message).toContain('Only queries with at least 3 characters.');
-        }
+        },
       });
     });
 
@@ -38,11 +38,11 @@ describe('TheMoviesService', () => {
       const dummyMovies = {
         Search: [
           { Title: 'Movie 1', imdbID: 'tt1234567' },
-          { Title: 'Movie 2', imdbID: 'tt7654321' }
-        ]
+          { Title: 'Movie 2', imdbID: 'tt7654321' },
+        ],
       };
 
-      service.searchMovies('abc').subscribe(movies => {
+      service.searchMovies('abc').subscribe((movies) => {
         expect(movies.Search.length).toBe(2);
         expect(movies.Search).toEqual(dummyMovies.Search);
       });
@@ -57,7 +57,7 @@ describe('TheMoviesService', () => {
         next: () => fail('should have failed with an error'),
         error: (error: HttpErrorResponse) => {
           expect(error.message).toContain('Could not recover movie search');
-        }
+        },
       });
 
       const req = httpMock.expectOne(`${service['baseUrl']}?apikey=${service['apiKey']}&s=abc`);
@@ -69,7 +69,7 @@ describe('TheMoviesService', () => {
     it('should return movie details', () => {
       const dummyDetails = { Title: 'Movie 1', imdbID: 'tt1234567', Plot: 'Some plot' };
 
-      service.getMovieDetails('tt1234567').subscribe(details => {
+      service.getMovieDetails('tt1234567').subscribe((details) => {
         expect(details).toEqual(dummyDetails);
       });
 
@@ -83,7 +83,7 @@ describe('TheMoviesService', () => {
         next: () => fail('should have failed with an error'),
         error: (error: HttpErrorResponse) => {
           expect(error.message).toContain('Something went wrong with the request. Please try again later.');
-        }
+        },
       });
 
       const req = httpMock.expectOne(`${service['baseUrl']}/?i=tt1234567&apikey=${service['apiKey']}`);
@@ -96,14 +96,14 @@ describe('TheMoviesService', () => {
       const dummyMovies = {
         Search: [
           { Title: 'Movie 1', imdbID: 'tt1234567' },
-          { Title: 'Movie 2', imdbID: 'tt7654321' }
-        ]
+          { Title: 'Movie 2', imdbID: 'tt7654321' },
+        ],
       };
 
       const dummyDetails1 = { Title: 'Movie 1', imdbID: 'tt1234567', Plot: 'Some plot' };
       const dummyDetails2 = { Title: 'Movie 2', imdbID: 'tt7654321', Plot: 'Some plot' };
 
-      service.getAllMovies(1).subscribe(details => {
+      service.getAllMovies(1).subscribe((details) => {
         expect(details.length).toBe(2);
         expect(details).toEqual([dummyDetails1, dummyDetails2]);
       });
@@ -127,7 +127,7 @@ describe('TheMoviesService', () => {
         next: () => fail('should have failed with an error'),
         error: (error: HttpErrorResponse) => {
           expect(error.message).toContain('Something went wrong with the request. Please try again later.');
-        }
+        },
       });
 
       const req = httpMock.expectOne(`${service['baseUrl']}?s=movie&type=movie&page=1&apikey=${service['apiKey']}`);
@@ -136,5 +136,4 @@ describe('TheMoviesService', () => {
   });
 
   // Similar tests can be written for getAllSeries and getPremieres following the pattern above
-
 });

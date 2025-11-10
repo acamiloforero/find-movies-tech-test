@@ -12,7 +12,7 @@
         </div>
       </div>
       <div class="flex items-center">
-        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-10 h-10 mr-2">
+        <img [src]="'star' | imgIcons: 'icons'" alt="star" class="w-10 h-10 mr-2" />
         <span class="text-white text-3xl font-bold">{{ movieDetails?.imdbRating }}</span>
         <span class="text-gray-400 text-lg ml-4">
           {{ movieDetails?.imdbVotes }}
@@ -22,15 +22,24 @@
     </div>
 
     <div class="flex mt-6">
-      <img *ngIf="movieDetails?.Poster !=='N/A'" [src]="movieDetails?.Poster" alt="Movie Poster" class="w-60 h-auto rounded-lg shadow-xl object-cover">
-      <img *ngIf="movieDetails?.Poster =='N/A'" [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto">
+      <img
+        *ngIf="movieDetails?.Poster !== 'N/A'"
+        [src]="movieDetails?.Poster"
+        alt="Movie Poster"
+        class="w-60 h-auto rounded-lg shadow-xl object-cover"
+      />
+      <img *ngIf="movieDetails?.Poster == 'N/A'" [src]="'favico' | imgPng: 'imgs'" alt="Logo" class="h-8 w-auto" />
       <div class="ml-8 flex-1">
         <div class="flex items-center bg-primary text-black rounded-lg overflow-hidden">
           <div class="px-6 py-4 font-bold bg-yellow-600 text-lg">{{ movieDetails?.AwardsT }}</div>
-          <div class="flex-1 px-6 py-4 bg-black text-white border border-primary rounded-r-lg text-lg">{{ movieDetails?.Awards }}</div>
+          <div class="flex-1 px-6 py-4 bg-black text-white border border-primary rounded-r-lg text-lg">
+            {{ movieDetails?.Awards }}
+          </div>
         </div>
         <div class="mt-6 flex space-x-4">
-          <span *ngFor="let genre of movieDetails?.Gender" class="bg-gray-700 px-4 py-2 rounded-full text-lg">{{ genre }}</span>
+          <span *ngFor="let genre of movieDetails?.Gender" class="bg-gray-700 px-4 py-2 rounded-full text-lg">{{
+            genre
+          }}</span>
         </div>
         <p class="mt-6 text-gray-300 text-lg">{{ movieDetails?.Plot }}</p>
         <div class="mt-6 text-lg">

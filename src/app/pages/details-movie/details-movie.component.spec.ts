@@ -14,22 +14,18 @@ describe('DetailsMovieComponent', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [
-        HttpClientTestingModule, 
-        RouterTestingModule,      
-        DetailsMovieComponent     
-      ],
+      imports: [HttpClientTestingModule, RouterTestingModule, DetailsMovieComponent],
       providers: [
         TheMoviesService,
         {
           provide: ActivatedRoute,
           useValue: {
             paramMap: of({
-              get: (key: string) => 'tt1234567'  
-            })
-          }
-        }
-      ]
+              get: (key: string) => 'tt1234567',
+            }),
+          },
+        },
+      ],
     }).compileComponents();
   }));
 
@@ -38,7 +34,7 @@ describe('DetailsMovieComponent', () => {
     component = fixture.componentInstance;
     movieService = TestBed.inject(TheMoviesService);
     router = TestBed.inject(Router);
-    spyOn(router, 'navigate');  
+    spyOn(router, 'navigate');
     fixture.detectChanges();
   });
 
@@ -61,7 +57,7 @@ describe('DetailsMovieComponent', () => {
       Writer: 'Jane Doe',
       Actors: 'Actor A, Actor B',
       Country: 'USA',
-      Released: '2022-01-01'
+      Released: '2022-01-01',
     };
 
     spyOn(movieService, 'getMovieDetails').and.returnValue(of(dummyMovieDetails));
@@ -71,8 +67,8 @@ describe('DetailsMovieComponent', () => {
     expect(component.isLoading).toBe(false);
     expect(component.movieDetails).toEqual({
       ...dummyMovieDetails,
-      AwardsT: "Awards & nominations",
-      Gender: ['Action', 'Drama']
+      AwardsT: 'Awards & nominations',
+      Gender: ['Action', 'Drama'],
     });
   });
 

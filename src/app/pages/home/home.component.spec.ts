@@ -18,26 +18,32 @@ describe('HomeComponent', () => {
 
   beforeEach(waitForAsync(() => {
     const movieServiceSpy = jasmine.createSpyObj('TheMoviesService', ['getAllMovies', 'getAllSeries', 'getPremieres']);
-  
-    movieServiceSpy.getAllMovies.and.returnValue(of([])); 
+
+    movieServiceSpy.getAllMovies.and.returnValue(of([]));
     movieServiceSpy.getAllSeries.and.returnValue(of([]));
     movieServiceSpy.getPremieres.and.returnValue(of([]));
-  
+
     routerEventsSubject = new Subject<any>();
-  
+
     TestBed.configureTestingModule({
       imports: [CommonModule, PipesModule, HomeComponent],
       providers: [
         { provide: TheMoviesService, useValue: movieServiceSpy },
-        { provide: Router, useValue: { navigate: jasmine.createSpy('navigate'), events: routerEventsSubject.asObservable() } },
-        TransferState
-      ]
+        {
+          provide: Router,
+          useValue: {
+            navigate: jasmine.createSpy('navigate'),
+            events: routerEventsSubject.asObservable(),
+          },
+        },
+        TransferState,
+      ],
     }).compileComponents();
-  
+
     movieService = TestBed.inject(TheMoviesService) as jasmine.SpyObj<TheMoviesService>;
     router = TestBed.inject(Router);
   }));
-  
+
   beforeEach(() => {
     fixture = TestBed.createComponent(HomeComponent);
     component = fixture.componentInstance;
@@ -119,5 +125,4 @@ describe('HomeComponent', () => {
     component.ngOnDestroy();
     expect(component.routerSubscription.unsubscribe).toHaveBeenCalled();
   });
-
 });

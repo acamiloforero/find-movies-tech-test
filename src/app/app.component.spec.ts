@@ -16,16 +16,16 @@ describe('AppComponent', () => {
           useValue: {
             snapshot: {
               paramMap: {
-                get: () => null
-              }
+                get: () => null,
+              },
             },
             paramMap: of({
-              get: () => null
-            })
-          }
-        }
+              get: () => null,
+            }),
+          },
+        },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   });
 
@@ -48,4 +48,3 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('app-header')).not.toBeNull();
   });
 });
-

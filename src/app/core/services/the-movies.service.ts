@@ -1,80 +1,55 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { catchError, forkJoin, Observable, switchMap, tap, throwError } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { catchError, forkJoin, Observable, switchMap, throwError } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TheMoviesService {
-  private apiKey = 'e0a86a5d'; 
-  private baseUrl = 'https://www.omdbapi.com/';
+  private baseUrl = '/api'; // apunta al BFF
 
   constructor(private http: HttpClient) {}
 
   searchMovies(query: string): Observable<any> {
-    if (query.length < 3) {
+    if (!query || query.trim().length < 3) {
       return throwError(() => new Error('Only queries with at least 3 characters.'));
     }
-    const params = new HttpParams()
-      .set('apikey', this.apiKey)
-      .set('s', query);
 
-    return this.http.get<any>(this.baseUrl, { params }).pipe(
-      catchError(error => {
+    // Ahora apuntamos al BFF con query param 'query'
+    const params = new HttpParams().set('query', query);
+
+    return this.http.get<any>(`${this.baseUrl}/search`, { params }).pipe(
+      catchError((error) => {
         console.error('Error occurred:', error);
         return throwError(() => new Error('Could not recover movie search'));
-      })
+      }),
     );
   }
-
   getMovieDetails(id: string): Observable<any> {
-    return this.http.get(`${this.baseUrl}/?i=${id}&apikey=${this.apiKey}`) .pipe(
-      catchError(this.handleError)
-    );
+    if (!id) return throwError(() => new Error('Movie ID is required.'));
+    return this.http
+      .get<any>(`${this.baseUrl}/movies/${id}`)
+      .pipe(catchError((error) => throwError(() => new Error(error?.message || 'Error fetching movie details'))));
   }
 
   getAllMovies(page: number = 1): Observable<any> {
-    return this.http.get(`${this.baseUrl}?s=movie&type=movie&page=${page}&apikey=${this.apiKey}`)
-      .pipe(
-        switchMap((response: any) => {
-          const movieDetailsRequests = response.Search.map((movie: any) =>
-            this.getMovieDetails(movie.imdbID)
-          );
-          return forkJoin(movieDetailsRequests);
-        }),
-        catchError(this.handleError)
-      );
-  }
-  
-  getAllSeries(page: number = 1): Observable<any> {
-    return this.http.get(`${this.baseUrl}?s=series&type=series&page=${page}&apikey=${this.apiKey}`)
-    .pipe(
-      switchMap((response: any) => {
-        const movieDetailsRequests = response.Search.map((movie: any) =>
-          this.getMovieDetails(movie.imdbID)
-        );
-        return forkJoin(movieDetailsRequests);
-      }),
-      catchError(this.handleError)
-    );
-  }
-  
-  getPremieres(page: number = 1): Observable<any> {
-    return this.http.get(`${this.baseUrl}?s=movie&y=2023&page=${page}&apikey=${this.apiKey}`)
-    .pipe(
-      switchMap((response: any) => {
-        const movieDetailsRequests = response.Search.map((movie: any) =>
-          this.getMovieDetails(movie.imdbID)
-        );
-        return forkJoin(movieDetailsRequests);
-      }),
-      catchError(this.handleError)
-    );;
+    const params = new HttpParams().set('page', page.toString());
+    return this.http
+      .get<any>(`${this.baseUrl}/movies`, { params })
+      .pipe(catchError((error) => throwError(() => new Error(error?.message || 'Error fetching movies'))));
   }
 
-  private handleError(error: any): Observable<never> {
-    console.error('An error occurred:', error);
-    return throwError(() => new Error('Something went wrong with the request. Please try again later.'));
+  getAllSeries(page: number = 1): Observable<any> {
+    const params = new HttpParams().set('page', page.toString());
+    return this.http
+      .get<any>(`${this.baseUrl}/series`, { params })
+      .pipe(catchError((error) => throwError(() => new Error(error?.message || 'Error fetching series'))));
   }
-  
+
+  getPremieres(page: number = 1): Observable<any> {
+    const params = new HttpParams().set('page', page.toString());
+    return this.http
+      .get<any>(`${this.baseUrl}/premieres`, { params })
+      .pipe(catchError((error) => throwError(() => new Error(error?.message || 'Error fetching premieres'))));
+  }
 }

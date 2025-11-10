@@ -11,12 +11,8 @@ describe('AppComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        RouterTestingModule,  
-        AppComponent,
-        HeaderComponent 
-      ],
-      schemas: [NO_ERRORS_SCHEMA]  
+      imports: [RouterTestingModule, AppComponent, HeaderComponent],
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   });
 

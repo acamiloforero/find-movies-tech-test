@@ -16,12 +16,12 @@
 
 .tabs-container {
   display: flex;
-  border-bottom: 1px solid #333; 
+  border-bottom: 1px solid #333;
 }
 .tab {
   position: relative;
-  padding: 0.5rem 1rem; 
-  @apply text-base sm:text-xl mt-2; 
+  padding: 0.5rem 1rem;
+  @apply text-base sm:text-xl mt-2;
   color: #777;
   background: none;
   border: none;
@@ -29,7 +29,7 @@
   transition: color 0.3s ease;
 
   &:hover {
-    color: #fff; 
+    color: #fff;
   }
 
   &.active {
@@ -44,7 +44,7 @@
     bottom: -1px;
     width: 100%;
     height: 3px;
-    background-color: #fff; 
+    background-color: #fff;
   }
 }
 .swiper-container {
@@ -59,30 +59,26 @@
   overflow-x: hidden;
 }
 
-
 .swiper-slide {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 400px; 
-    padding: 1rem;
-    background-color: #070707; 
-    border-radius: 0.5rem; 
-  }
-
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 400px;
+  padding: 1rem;
+  background-color: #070707;
+  border-radius: 0.5rem;
+}
 
 .poster-img {
   @apply rounded-lg object-cover;
   width: 171px;
   height: 258px;
 
-
   @media (min-width: 640px) {
-   width: 300px;
-   height: 450px;
+    width: 300px;
+    height: 450px;
   }
-
 }
 .rating {
   position: absolute;
@@ -94,7 +90,7 @@
   border-radius: 0.5rem 0.5rem 0 0;
   display: flex;
   align-items: center;
- 
+
   @media (min-width: 640px) {
     width: 40%;
   }
@@ -113,12 +109,12 @@
 }
 
 .swiper-scrollbar {
-  background-color: #4b5563; 
+  background-color: #4b5563;
 }
 
-
-.swiper-button-next, .swiper-button-prev {
-  color: white; 
+.swiper-button-next,
+.swiper-button-prev {
+  color: white;
 }
 
 .swiper-button-next {
@@ -132,13 +128,13 @@
   overflow-x: hidden;
 }
 .skeleton {
-  @apply bg-gray-700 animate-pulse rounded-lg; 
+  @apply bg-gray-700 animate-pulse rounded-lg;
 }
 
 .skeleton-header .skeleton {
-  @apply mb-4; 
+  @apply mb-4;
 }
 
 .skeleton-card {
-  @apply bg-gray-700 animate-pulse rounded-lg; 
+  @apply bg-gray-700 animate-pulse rounded-lg;
 }
