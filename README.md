@@ -51,3 +51,16 @@ npm run lint:fix
 npm run format
 
 ```
+
+## Cambios Realizados
+
+Durante la prueba técnica se realizaron los siguientes cambios y mejoras en el proyecto:
+
+- 🔹 **Gestión de estado:** Se implementó un store centralizado para HomeComponent, reemplazando el uso disperso de `localStorage` y variables locales.  
+- 🔹 **API Key segura:** La clave de la API se movió a variables de entorno y se creó un servicio de configuración del lado del servidor.  
+- 🔹 **Rendimiento:** Se optimizaron las llamadas a la API para evitar el problema N+1, implementando caching y reduciendo llamadas redundantes.  
+- 🔹 **Manejo de errores:** Se añadió un interceptor HTTP y un servicio global de manejo de errores en los servicios y componentes principales.  
+- 🔹 **Tipado fuerte:** Se crearon interfaces TypeScript para todas las respuestas de la API, garantizando validaciones y seguridad en tiempo de compilación.  
+- 🔹 **Calidad de código:** Se configuró ESLint y Prettier para mantener consistencia en el estilo del código y facilitar el mantenimiento.  
+- 🔹 **Separación de responsabilidades:** La lógica de negocio se extrajo de los componentes de presentación hacia servicios y stores, aplicando principios SOLID.  
+
